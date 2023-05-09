@@ -2,9 +2,6 @@ const fs = require('fs')
 const fsPromises = require('fs/promises')
 const path = require('path')
 
-const sourcePath = path.join(__dirname, 'files')
-const targetPath = path.join(__dirname, 'files-copy')
-
 async function copyDir(sourceDir, targetDir) {
 	try {
 		await fsPromises.mkdir(targetDir, { recursive: true })
@@ -35,10 +32,18 @@ async function copyDir(sourceDir, targetDir) {
 			}
 		}
 	} catch (error) {
-		console.error(error)
+		console.error('Error copying files', error)
 	}
 }
 
-copyDir(sourcePath, targetPath)
-	.then(() => console.log('Копирование завершено'))
-	.catch((error) => console.error(error))
+if (require.main === module) {
+	// If this file is run directly, execute the following code
+	const sourcePath = path.join(__dirname, 'files')
+	const targetPath = path.join(__dirname, 'files-copy')
+
+	copyDir(sourcePath, targetPath).then(() => console.log('Files copied successfully'))
+}
+
+module.exports = {
+	copyDir,
+}

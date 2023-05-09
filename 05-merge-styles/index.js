@@ -1,10 +1,7 @@
 const path = require('path')
 const fsPromises = require('fs/promises')
 
-const stylesPath = path.join(__dirname, 'styles')
-const distPath = path.join(__dirname, 'project-dist')
-
-async function readStyles() {
+async function readStyles(stylesPath) {
 	const files = await fsPromises.readdir(stylesPath)
 	const styles = []
 
@@ -21,12 +18,22 @@ async function readStyles() {
 	return styles
 }
 
-async function writeBundle(styles) {
-	const bundlePath = path.join(distPath, 'bundle.css')
+async function writeBundle(styles, bundlePath) {
 	await fsPromises.writeFile(bundlePath, styles.join('\n'))
 }
 
-readStyles()
-	.then(writeBundle)
-	.then(() => console.log('Styles bundled successfully'))
-	.catch((err) => console.error('Error bundling styles', err))
+if (require.main === module) {
+	const stylesPath = path.join(__dirname, 'styles')
+	const distPath = path.join(__dirname, 'project-dist')
+	const bundlePath = path.join(distPath, 'bundle.css')
+
+	readStyles(stylesPath)
+		.then((styles) => writeBundle(styles, bundlePath))
+		.then(() => console.log('Styles bundled successfully'))
+		.catch((err) => console.error('Error bundling styles', err))
+}
+
+module.exports = {
+	readStyles,
+	writeBundle,
+}

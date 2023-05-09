@@ -1,6 +1,8 @@
 const fs = require('fs')
 const fsPromises = require('fs/promises')
 const path = require('path')
+const { readStyles, writeBundle } = require('../05-merge-styles/index')
+const { copyDir } = require('../04-copy-directory/index')
 
 const projectDir = path.join(__dirname, 'project-dist')
 const componentsDir = path.join(__dirname, 'components')
@@ -42,54 +44,10 @@ function replaceTagsWithComponents(template, components) {
 }
 
 async function buildStyleCss() {
-	const styleFiles = await fsPromises.readdir(stylesDir)
-	const cssContent = await Promise.all(
-		styleFiles.map((file) => {
-			if (path.extname(file) === '.css') {
-				return fsPromises.readFile(path.join(stylesDir, file), 'utf-8')
-			}
-			return ''
-		})
-	)
-	const css = cssContent.join('\n')
-	await fsPromises.writeFile(styleFile, css, 'utf-8')
-}
-
-async function copyAssets() {
-	const srcDir = path.join(assetsDir, '/')
-	const destDir = path.join(projectDir, 'assets')
-	const files = await fsPromises.readdir(srcDir)
-	await Promise.all(
-		files.map(async (file) => {
-			const srcFile = path.join(srcDir, file)
-			const destFile = path.join(destDir, file)
-			const stats = await fsPromises.stat(srcFile)
-			if (stats.isDirectory()) {
-				const destSubDir = path.join(destDir, file)
-				await fsPromises.mkdir(destSubDir, { recursive: true })
-				await copyDir(srcFile, destSubDir)
-			} else {
-				await fsPromises.copyFile(srcFile, destFile)
-			}
-		})
-	)
-}
-
-async function copyDir(srcDir, destDir) {
-	const files = await fsPromises.readdir(srcDir)
-	await Promise.all(
-		files.map(async (file) => {
-			const srcFile = path.join(srcDir, file)
-			const destFile = path.join(destDir, file)
-			const stats = await fsPromises.stat(srcFile)
-			if (stats.isDirectory()) {
-				await fsPromises.mkdir(destFile)
-				await copyDir(srcFile, destFile)
-			} else {
-				await fsPromises.copyFile(srcFile, destFile)
-			}
-		})
-	)
+	readStyles(stylesDir)
+		.then((styles) => writeBundle(styles, styleFile))
+		.then(() => console.log('Styles bundled successfully'))
+		.catch((err) => console.error('Error bundling styles', err))
 }
 
 async function buildProject() {
@@ -99,11 +57,18 @@ async function buildProject() {
 		} catch (error) {
 			await fsPromises.mkdir(projectDir)
 		}
-		await buildIndexHtml()
-		await buildStyleCss()
-		await copyAssets()
+
+		await Promise.all([
+			buildIndexHtml(),
+			buildStyleCss(),
+			copyDir(assetsDir, path.join(projectDir, 'assets')).then(() =>
+				console.log('Assets copied successfully')
+			),
+		])
+
+		console.log('Project built successfully')
 	} catch (error) {
-		console.error(error)
+		console.error('Error occurred while building the project:', error)
 	}
 }
 
